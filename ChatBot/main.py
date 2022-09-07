@@ -199,3 +199,23 @@ class DecoderBlock(nn.Module):
     outputs = self.norm_3(attention2 + outputs)
 
     return outputs
+
+class Decoder(nn.Module):
+  def __init__(self,text_embedding_vectors,  vocab_size, num_layers, d_ff, d_model, num_heads, dropout):
+    super(Decoder, self).__init__()
+    self.vocab_size = vocab_size
+    self.d_model = d_model
+    self.num_layers = num_layers
+    self.embb = nn.Embedding(text_embedding_vectors, d_model)
+    self.dropout_1 = nn.Dropout(dropout)
+    self.PE = PositionalEncoder(vocab_size, d_model)
+    self.decoder_block = DecoderBlock(d_ff, d_model, num_heads, dropout)
+  def forward(self, enc_output, dec_input, padding_mask, look_ahead_mask):
+    emb = self.embb(dec_input)
+    emb *= math.sqrt(self.d_model)
+    emb = self.PE(emb)
+    output = self.dropout_1(emb)
+    for i in range(self.num_layers):
+      output = self.decoder_block(output, enc_output, padding_mask, look_ahead_mask)
+
+    return output
