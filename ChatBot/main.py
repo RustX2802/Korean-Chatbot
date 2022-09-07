@@ -172,3 +172,30 @@ class Encoder(nn.Module):
       output = self.encoder_block(output, padding_mask)
 
     return output
+
+class DecoderBlock(nn.Module):
+  def __init__(self, d_ff, d_model, num_heads, dropout):
+    super(DecoderBlock, self).__init__()
+    
+    self.attn = MultiheadAttention(d_model, num_heads)
+    self.attn_2 = MultiheadAttention(d_model, num_heads)
+    self.dropout_1 = nn.Dropout(dropout)
+    self.norm_1 = nn.LayerNorm(d_model)
+    self.ff = FeedForward(d_model, d_ff)
+    self.dropout_2 = nn.Dropout(dropout)
+    self.dropout_3 = nn.Dropout(dropout)
+    self.norm_2 = nn.LayerNorm(d_model)
+    self.norm_3 = nn.LayerNorm(d_model)
+
+  def forward(self, inputs, enc_outputs, padding_mask, look_ahead_mask):
+    attention1 = self.attn({'query': inputs, 'key': inputs, 'value': inputs, 'mask': look_ahead_mask})
+    attention1 = self.norm_1(inputs + attention1)
+    attention2 = self.attn_2({'query': attention1, 'key': enc_outputs, 'value': enc_outputs, 'mask': padding_mask})
+    attention2 = self.dropout_1(attention2)
+    attention2 = self.norm_2(attention1 + attention2)
+
+    outputs = self.ff(attention2)
+    outputs = self.dropout_3(outputs)
+    outputs = self.norm_3(attention2 + outputs)
+
+    return outputs
