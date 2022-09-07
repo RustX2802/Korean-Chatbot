@@ -151,3 +151,24 @@ class EncoderBlock(nn.Module):
     outputs = self.norm_2(attention + outputs)
 
     return outputs
+
+class Encoder(nn.Module):
+  def __init__(self,text_embedding_vectors, vocab_size, num_layers, d_ff, d_model, num_heads, dropout):
+    super(Encoder, self).__init__()
+    self.vocab_size = vocab_size
+    self.d_model = d_model
+    self.num_layers = num_layers
+    self.embb = nn.Embedding(text_embedding_vectors, d_model)
+    self.dropout_1 = nn.Dropout(dropout)
+    self.PE = PositionalEncoder(vocab_size, d_model)
+    self.encoder_block = EncoderBlock(d_ff, d_model, num_heads, dropout)
+  def forward(self, x, padding_mask):
+    emb = self.embb(x)
+    emb *= math.sqrt(self.d_model)
+    emb = self.PE(emb)
+    output = self.dropout_1(emb)
+
+    for i in range(self.num_layers):
+      output = self.encoder_block(output, padding_mask)
+
+    return output
