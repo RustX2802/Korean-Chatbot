@@ -130,3 +130,24 @@ class FeedForward(nn.Module):
         outputs = F.relu(outputs)
         outputs = self.linear_2(outputs)
         return outputs
+
+class EncoderBlock(nn.Module):
+  def __init__(self, d_ff, d_model, num_heads, dropout):
+    super(EncoderBlock, self).__init__()
+    
+    self.attn = MultiheadAttention(d_model, num_heads)
+    self.dropout_1 = nn.Dropout(dropout)
+    self.norm_1 = nn.LayerNorm(d_model)
+    self.ff = FeedForward(d_model, d_ff)
+    self.dropout_2 = nn.Dropout(dropout)
+    self.norm_2 = nn.LayerNorm(d_model)
+
+  def forward(self, inputs, padding_mask):
+    attention = self.attn({'query': inputs, 'key': inputs, 'value': inputs, 'mask': padding_mask})
+    attention = self.dropout_1(attention)
+    attention = self.norm_1(inputs + attention)
+    outputs = self.ff(attention)
+    outputs = self.dropout_2(outputs)
+    outputs = self.norm_2(attention + outputs)
+
+    return outputs
