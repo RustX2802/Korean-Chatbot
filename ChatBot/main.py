@@ -219,3 +219,24 @@ class Decoder(nn.Module):
       output = self.decoder_block(output, enc_output, padding_mask, look_ahead_mask)
 
     return output
+
+class transformer(nn.Module):
+    def __init__(self, text_embedding_vectors, vocab_size, num_layers, d_ff, d_model, num_heads, dropout):
+        self.vocab_size = vocab_size
+        super(transformer, self).__init__()
+        self.enc_outputs = Encoder(text_embedding_vectors, vocab_size, num_layers, d_ff, d_model, num_heads, dropout)
+        self.dec_outputs = Decoder(text_embedding_vectors, vocab_size, num_layers, d_ff, d_model, num_heads, dropout)
+        self.output = nn.Linear(d_model, text_embedding_vectors)
+        self.softmax = nn.LogSoftmax(dim=-1)
+
+    def forward(self, input, dec_input):
+        enc_input = input
+        dec_input = dec_input
+        enc_padding_mask = create_padding_mask(enc_input)
+        dec_padding_mask = create_padding_mask(enc_input)
+        look_ahead_mask = create_look_ahead_mask(dec_input)
+    
+        enc_output = self.enc_outputs(enc_input, enc_padding_mask)
+        dec_output = self.dec_outputs(enc_output, dec_input, dec_padding_mask, look_ahead_mask)
+        output = self.output(dec_output)
+        return output
