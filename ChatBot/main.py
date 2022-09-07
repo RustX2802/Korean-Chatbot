@@ -56,3 +56,65 @@ class PositionalEncoder(nn.Module):
         output = torch.matmul(attention_weights, value)
 
         return output, attention_weights
+
+class MultiheadAttention(nn.Module):
+
+    def __init__(self, d_model, num_heads):
+        super(MultiheadAttention, self).__init__()
+        self.d_model = d_model
+        self.num_heads = num_heads
+
+        assert d_model % self.num_heads == 0
+        # d_model을 num_heads로 나눈 값.
+        self.depth = int(d_model/self.num_heads)
+
+        # WQ, WK, WV에 해당하는 밀집층 정의
+        self.q_linear = nn.Linear(d_model, d_model)
+        self.v_linear = nn.Linear(d_model, d_model)
+        self.k_linear = nn.Linear(d_model, d_model)
+        # WO에 해당하는 밀집층 정의
+        self.out = nn.Linear(d_model, d_model)
+
+
+    # num_heads 개수만큼 q, k, v를 split하는 함수
+    def split_heads(self, inputs, batch_size):
+      inputs = torch.reshape(
+          inputs, (batch_size, -1, self.num_heads, self.depth))
+      return torch.transpose(inputs, 1,2)
+
+    def forward(self, inputs):
+        query, key, value, mask = inputs['query'], inputs['key'], inputs['value'], inputs['mask']
+        batch_size = query.shape[0]
+        # 1. WQ, WK, WV에 해당하는 밀집층 지나기
+        # q : (batch_size, query의 문장 길이, d_model)
+        # k : (batch_size, key의 문장 길이, d_model)
+        # v : (batch_size, value의 문장 길이, d_model)
+        query = self.q_linear(query)
+        key = self.k_linear(key)
+        value = self.v_linear(value)
+
+
+        # 2. 헤드 나누기
+        # q : (batch_size, num_heads, query의 문장 길이, d_model/num_heads)
+        # k : (batch_size, num_heads, key의 문장 길이, d_model/num_heads)
+        # v : (batch_size, num_heads, value의 문장 길이, d_model/num_heads)
+        query = self.split_heads(query, batch_size)
+        key = self.split_heads(key, batch_size)
+        value = self.split_heads(value, batch_size)
+
+
+        # 3. 스케일드 닷 프로덕트 어텐션. 앞서 구현한 함수 사용.
+        # (batch_size, num_heads, query의 문장 길이, d_model/num_heads)
+        scaled_attention, _ = scaled_dot_product_attention(query, key, value, mask)
+        # (batch_size, query의 문장 길이, num_heads, d_model/num_heads)
+        scaled_attention = torch.transpose(scaled_attention, 1,2)
+
+        # 4. 헤드 연결(concatenate)하기
+        # (batch_size, query의 문장 길이, d_model)
+        concat_attention = torch.reshape(scaled_attention,
+                                      (batch_size, -1, self.d_model))
+
+        # 5. WO에 해당하는 밀집층 지나기
+        # (batch_size, query의 문장 길이, d_model)
+        outputs = self.out(concat_attention)
+        return outputs
