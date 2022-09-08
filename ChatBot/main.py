@@ -252,5 +252,8 @@ file_list = []
 for dirname, _, filenames in os.walk('ChatbotData.csv'):
     for filename in filenames:
         file_list.append(os.path.join(dirname, filename))
-train_data = pd.read_csv(file_list[0])
-train_data.head()
+    train_data = pd.read_csv(file_list[0])
+    train_data.head()
+
+from torchtext import data, datasets
+import os
