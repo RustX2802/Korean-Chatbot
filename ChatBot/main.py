@@ -257,3 +257,5 @@ for dirname, _, filenames in os.walk('ChatbotData.csv'):
 
 from torchtext import data, datasets
 import os
+
+from soynlp.tokenizer import LTokenizer
