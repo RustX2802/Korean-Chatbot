@@ -349,4 +349,96 @@ net.apply(weights_init)
 
 
 print('네트워크 초기화 완료')
+
+# 손실 함수의 정의
+criterion = nn.CrossEntropyLoss()
+
+# 최적화 설정
+learning_rate = 2e-4
+optimizer = torch.optim.Adam(net.parameters(), lr=learning_rate)
+
+def create_padding_mask(x):
+  input_pad = 0
+  mask = (x == input_pad).float()
+  mask = mask.unsqueeze(1).unsqueeze(1)
+  # (batch_size, 1, 1, key의 문장 길이)
+  return mask
+
+def create_look_ahead_mask(x):
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+  seq_len = x.shape[1]
+  look_ahead_mask = torch.ones(seq_len, seq_len)
+  look_ahead_mask = torch.triu(look_ahead_mask, diagonal=1).to(device)
+
+  padding_mask = create_padding_mask(x).to(device) # 패딩 마스크도 포함
+  return torch.maximum(look_ahead_mask, padding_mask)
+
+#from IPython.display import clear_output
+import datetime
+# 학습 정의
+def train_model(net, train_iter, criterion, optimizer, num_epochs):
+    start_time = time.time()
+
+    ntokens = len(Q.vocab.stoi)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print("사용 디바이스:", device)
+    print('-----start-------')
+    net.to(device)
+    epoch_ = []
+    epoch_train_loss = []
+    # 네트워크가 어느정도 고정되면 고속화
+    torch.backends.cudnn.benchmark = True
+    
+    net.train()
+    # epoch 루프
+    best_epoch_loss = float("inf")
+    for epoch in range(num_epochs):
+      epoch_loss = 0.0
+      cnt= 0
+      for batch in train_iter:
+          questions = batch.Q.to(device)
+          answers = batch.A.to(device)
+          with torch.set_grad_enabled(True):
+            # Transformer에 입력
+            preds = net(questions, answers)
+            pad = torch.LongTensor(answers.size(0), 1).fill_(PAD_TOKEN).to(device)
+            preds_id = torch.transpose(preds,1,2)
+            outputs = torch.cat((answers[:, 1:], pad), -1)
+            optimizer.zero_grad()
+            loss = criterion(preds_id, outputs)  # loss 계산
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(net.parameters(), 0.5)
+            optimizer.step()
+            epoch_loss +=loss.item()
+            cnt += 1
+      epoch_loss = epoch_loss / cnt
+      if not best_epoch_loss or epoch_loss < best_epoch_loss:
+        if not os.path.isdir("snapshot"):
+            os.makedirs("snapshot")
+        torch.save(net.state_dict(), './snapshot/transformermodel.pt')
+      
+      epoch_.append(epoch)
+      epoch_train_loss.append(epoch_loss)
+      print('Epoch {0}/{1} Average Loss: {2}'.format(epoch+1, num_epochs, epoch_loss))
+      clear_output(wait = True)
+    
+    
+    fig = plt.figure(figsize=(8,8))
+    fig.set_facecolor('white')
+    ax = fig.add_subplot()
+
+    ax.plot(epoch_,epoch_train_loss, label='Average loss')
+
+
+    ax.legend()
+    ax.set_xlabel('epoch')
+    ax.set_ylabel('loss')
+
+    plt.show()
+    end_time = time.time() - start_time
+    times = str(datetime.timedelta(seconds=end_time)).split(".")
+    print('Finished in {0}'.format(times[0]))
+
+#num_epochs = 100
+#train_model(net, train_iter, criterion, optimizer, num_epochs=num_epochs)
     
