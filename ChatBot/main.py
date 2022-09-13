@@ -42,20 +42,20 @@ class PositionalEncoder(nn.Module):
         ret = math.sqrt(self.d_model)*x + self.pe[:, :x.size(1)]
         return ret
 
-    def scaled_dot_product_attention(query, key, value, mask):
-        matmul_qk = torch.matmul(query, torch.transpose(key,2,3))
+def scaled_dot_product_attention(query, key, value, mask):
+    matmul_qk = torch.matmul(query, torch.transpose(key,2,3))
 
-        depth = key.shape[-1]
-        logits = matmul_qk / math.sqrt(depth)
+    depth = key.shape[-1]
+    logits = matmul_qk / math.sqrt(depth)
 
-        if mask is not None:
-            logits += (mask * -1e9)
+    if mask is not None:
+        logits += (mask * -1e9)
 
-        attention_weights = F.softmax(logits, dim=-1)
+    attention_weights = F.softmax(logits, dim=-1)
 
-        output = torch.matmul(attention_weights, value)
+    output = torch.matmul(attention_weights, value)
 
-        return output, attention_weights
+    return output, attention_weights
 
 class MultiheadAttention(nn.Module):
 
@@ -420,7 +420,7 @@ def train_model(net, train_iter, criterion, optimizer, num_epochs):
       epoch_.append(epoch)
       epoch_train_loss.append(epoch_loss)
       print('Epoch {0}/{1} Average Loss: {2}'.format(epoch+1, num_epochs, epoch_loss))
-      clear_output(wait = True)
+      #clear_output(wait = True)
     
     
     fig = plt.figure(figsize=(8,8))
@@ -439,6 +439,65 @@ def train_model(net, train_iter, criterion, optimizer, num_epochs):
     times = str(datetime.timedelta(seconds=end_time)).split(".")
     print('Finished in {0}'.format(times[0]))
 
-#num_epochs = 100
+num_epochs = 100
 #train_model(net, train_iter, criterion, optimizer, num_epochs=num_epochs)
-    
+
+net_trained = transformer(text_embedding_vectors = text_embedding_vectors, vocab_size=VOCAB_SIZE, num_layers=NUM_LAYERS, d_ff=D_FF, d_model=D_MODEL, num_heads=NUM_HEADS, dropout=DROPOUT).to(device)
+net_trained.load_state_dict(torch.load('./snapshot/transformermodel.pt'))
+
+def stoi(vocab, token, max_len):
+  #
+  indices=[]
+  token.extend(['<pad>'] * (max_len - len(token)))
+  for string in token:
+    if string in vocab:
+      i = vocab.index(string)
+    else:
+      i = 0
+    indices.append(i)
+  return torch.LongTensor(indices).unsqueeze(0)
+
+def itos(vocab, indices):
+  text = []
+  for i in indices.cpu()[0]:
+    if i==1:
+      break
+    else:
+      if i not in [PAD_TOKEN, START_TOKEN, END_TOKEN]:
+          if i != UNK_TOKEN:
+              text.append(vocab[i])
+          else:
+              text.append('??')
+  return " ".join(text)
+
+def evaluate(input_sentence):
+    VOCAB_SIZE = 40
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = LTokenizer()
+    token = tokenizer(input_sentence)
+    input = stoi(Q.vocab.itos, token, VOCAB_SIZE).to(device)
+    output = torch.LongTensor(1, 1).fill_(START_TOKEN).to(device)
+    for i in range(VOCAB_SIZE):
+        predictions = net_trained(input, output)
+        predictions = predictions[:, -1:, :]
+                            
+        #                                      PAD, UNK, START 토큰 제외
+        predicted_id = torch.argmax(predictions[:,:,3:], axis=-1) + 3
+        if predicted_id == END_TOKEN:
+            predicted_id = predicted_id
+            break
+        output = torch.cat((output, predicted_id),-1)
+    return output
+
+def predict(sentence):
+  out = evaluate(sentence)
+  out_text = itos(Q.vocab.itos, out)
+  print('input = [{0}]'.format(sentence))
+  print('output = [{0}]'.format(out_text))
+  return out_text
+
+out = predict('우리 내일 같이 영화 볼래?')
+out = predict('3박4일 놀러가고 싶다')
+out = predict('가난한 자의 설움')
+out = predict('가만 있어도 땀난다')
+out = predict('가상화폐 쫄딱 망함')
