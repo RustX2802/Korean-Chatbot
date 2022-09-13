@@ -249,11 +249,16 @@ import time
 #urllib.request.urlretrieve("https://raw.githubusercontent.com/songys/Chatbot_data/master/ChatbotData%20.csv", filename="ChatBotData.csv")
 import os
 file_list = []
-for dirname, _, filenames in os.walk('ChatbotData.csv'):
+file_list.append(os.path.join("/root/virtualenvironment/RustX/bin/ChatBot/ChatbotData.csv"))
+train_data = pd.read_csv(file_list[0])
+#df.head()
+"""
+for dirname, _, filenames in os.walk('/root/virtualenvironment/RustX/bin/ChatBot/ChatbotData.csv'):
     for filename in filenames:
         file_list.append(os.path.join(dirname, filename))
     train_data = pd.read_csv(file_list[0])
     train_data.head()
+    """
 
 from torchtext.legacy import data, datasets
 import os
@@ -290,3 +295,26 @@ A = data.Field(
     eos_token="<EOS>",
     fix_length=VOCAB_SIZE
 )
+
+trainset = data.TabularDataset(
+    path=file_list[0], format='csv', skip_header=False,
+    fields=[('Q', Q),('A', A)])
+
+print(vars(trainset[2]))
+print('훈련 샘플의 개수 : {}'.format(len(trainset)))
+
+Q.build_vocab(trainset.Q, trainset.A, min_freq = 2) # 단어 집합 생성
+A.vocab = Q.vocab# 단어 집합 생성
+
+PAD_TOKEN, START_TOKEN, END_TOKEN, UNK_TOKEN = Q.vocab.stoi['<pad>'], Q.vocab.stoi['<SOS>'], Q.vocab.stoi['<EOS>'], Q.vocab.stoi['<unk>']
+
+#Define HyperParameter
+VOCAB_SIZE = VOCAB_SIZE
+text_embedding_vectors = len(Q.vocab)
+NUM_LAYERS = 4
+D_FF = 512
+D_MODEL = 128
+NUM_HEADS = 4
+DROPOUT = 0.3
+BATCH_SIZE=64
+    
