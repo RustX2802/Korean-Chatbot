@@ -255,7 +255,38 @@ for dirname, _, filenames in os.walk('ChatbotData.csv'):
     train_data = pd.read_csv(file_list[0])
     train_data.head()
 
-from torchtext import data, datasets
+from torchtext.legacy import data, datasets
 import os
 
 from soynlp.tokenizer import LTokenizer
+
+tokenizer = LTokenizer()
+
+tokenizer("내일 역 앞의 식당에서 밥 먹으러 나갈래 ?")
+
+VOCAB_SIZE = 40
+
+#import torchtext
+#print(torchtext.__version__)
+
+Q = data.Field(
+    sequential=True,
+    use_vocab=True,
+    lower=True,
+    tokenize=tokenizer,
+    batch_first=True,
+    init_token="<SOS>",
+    eos_token="<EOS>",
+    fix_length=VOCAB_SIZE
+)
+
+A = data.Field(
+    sequential=True,
+    use_vocab=True,
+    lower=True,
+    tokenize=tokenizer,
+    batch_first=True,
+    init_token="<SOS>",
+    eos_token="<EOS>",
+    fix_length=VOCAB_SIZE
+)
