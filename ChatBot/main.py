@@ -251,7 +251,7 @@ import os
 file_list = []
 file_list.append(os.path.join("/root/virtualenvironment/RustX/bin/ChatBot/ChatbotData.csv"))
 train_data = pd.read_csv(file_list[0])
-#df.head()
+#train_data.head()
 """
 for dirname, _, filenames in os.walk('/root/virtualenvironment/RustX/bin/ChatBot/ChatbotData.csv'):
     for filename in filenames:
@@ -317,4 +317,36 @@ D_MODEL = 128
 NUM_HEADS = 4
 DROPOUT = 0.3
 BATCH_SIZE=64
+
+# Define Iterator
+# train_iter batch has text and target item
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+train_iter = data.BucketIterator(
+        trainset, batch_size=BATCH_SIZE,
+        shuffle=True, repeat=False, sort=False, device = device)
+    
+# 모델 구축
+print(text_embedding_vectors)
+net = transformer(text_embedding_vectors = text_embedding_vectors, 
+                  vocab_size=VOCAB_SIZE, num_layers=NUM_LAYERS, d_ff=D_FF, d_model=D_MODEL, 
+                  num_heads=NUM_HEADS, dropout=DROPOUT)
+
+# 네트워크 초기화
+def weights_init(m):
+    classname = m.__class__.__name__
+    if classname.find('Linear') != -1:
+        # Liner층의 초기화
+        nn.init.kaiming_normal_(m.weight)
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0.0)
+
+# 훈련 모드 설정
+net.train()
+
+# TransformerBlock모듈의 초기화 설정
+net.apply(weights_init)
+
+
+print('네트워크 초기화 완료')
     
