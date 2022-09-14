@@ -245,34 +245,18 @@ import pandas as pd
 import re
 import urllib.request
 import time
-
-#urllib.request.urlretrieve("https://raw.githubusercontent.com/songys/Chatbot_data/master/ChatbotData%20.csv", filename="ChatBotData.csv")
 import os
+from torchtext.legacy import data, datasets
+from soynlp.tokenizer import LTokenizer
+
 file_list = []
 file_list.append(os.path.join("/root/virtualenvironment/RustX/bin/ChatBot/ChatbotData.csv"))
 train_data = pd.read_csv(file_list[0])
-#train_data.head()
-"""
-for dirname, _, filenames in os.walk('/root/virtualenvironment/RustX/bin/ChatBot/ChatbotData.csv'):
-    for filename in filenames:
-        file_list.append(os.path.join(dirname, filename))
-    train_data = pd.read_csv(file_list[0])
-    train_data.head()
-    """
-
-from torchtext.legacy import data, datasets
-import os
-
-from soynlp.tokenizer import LTokenizer
 
 tokenizer = LTokenizer()
-
 tokenizer("내일 역 앞의 식당에서 밥 먹으러 나갈래 ?")
 
 VOCAB_SIZE = 40
-
-#import torchtext
-#print(torchtext.__version__)
 
 Q = data.Field(
     sequential=True,
@@ -373,7 +357,6 @@ def create_look_ahead_mask(x):
   padding_mask = create_padding_mask(x).to(device) # 패딩 마스크도 포함
   return torch.maximum(look_ahead_mask, padding_mask)
 
-#from IPython.display import clear_output
 import datetime
 # 학습 정의
 def train_model(net, train_iter, criterion, optimizer, num_epochs):
@@ -420,7 +403,6 @@ def train_model(net, train_iter, criterion, optimizer, num_epochs):
       epoch_.append(epoch)
       epoch_train_loss.append(epoch_loss)
       print('Epoch {0}/{1} Average Loss: {2}'.format(epoch+1, num_epochs, epoch_loss))
-      #clear_output(wait = True)
     
     
     fig = plt.figure(figsize=(8,8))
@@ -498,6 +480,4 @@ def predict(sentence):
 
 out = predict('우리 내일 같이 영화 볼래?')
 out = predict('3박4일 놀러가고 싶다')
-out = predict('가난한 자의 설움')
-out = predict('가만 있어도 땀난다')
-out = predict('가상화폐 쫄딱 망함')
+out = predict('가족끼리 여행간다.')
